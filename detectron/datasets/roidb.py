@@ -24,6 +24,9 @@ from past.builtins import basestring
 import logging
 import numpy as np
 
+import imgaug as ia
+from imgaug import augmenters as iaa 
+
 from detectron.core.config import cfg
 from detectron.datasets.json_dataset import JsonDataset
 import detectron.utils.boxes as box_utils
@@ -48,6 +51,12 @@ def combined_roidb_for_training(dataset_info, proposal_files):
         if cfg.TRAIN.USE_FLIPPED:
             logger.info('Appending horizontally-flipped training examples...')
             extend_with_flipped_entries(roidb, ds)
+        # TT: Augmentation
+        if cfg.TRAIN.USE_TRANSFORMATION:
+            logger.info('Appending augmented training examples...')
+            transform_samples = int(cfg.TRAIN.TRANSFORM_SAMPLES)
+            extend_with_augmented_entries(roidb, ds, aug_samples=transform_samples)
+        # TT: end
         logger.info('Loaded dataset: {:s}'.format(ds.name))
         return roidb
 
@@ -106,6 +115,59 @@ def extend_with_flipped_entries(roidb, dataset):
         flipped_roidb.append(flipped_entry)
     roidb.extend(flipped_roidb)
 
+# TT: Augmentation
+def extend_with_augmented_entries(roidb, dataset, aug_samples=1):
+    """Flip each entry in the given roidb and return a new roidb that is the
+    concatenation of the original roidb and the flipped entries.
+
+    "Flipping" an entry means that that image and associated metadata (e.g.,
+    ground truth boxes and object proposals) are horizontally flipped.
+    """
+    augmented_roidb = []
+    for aug_i in range(aug_samples):      
+        for entry in roidb:
+            aug_seq = iaa.Sequential([
+                iaa.Sometimes(0.5,
+                    iaa.Sequential([
+                        iaa.Fliplr(0.1), # horizontally flip 50% of the images
+                        iaa.Flipud(0.1),
+                        iaa.PerspectiveTransform(scale=(0.01, 0.1)),
+                    ])
+                    ,
+                    iaa.Sequential([ 
+                        iaa.Fliplr(0.1), # horizontally flip 50% of the images
+                        iaa.Flipud(0.1),
+                        iaa.Affine(scale=(0.7, 0.9),
+                                   rotate=(-90, 90),
+                                   shear=(-8, 8) )
+                    ])
+                ),
+                iaa.Sometimes(0.3, iaa.SomeOf(3,[
+                        iaa.MotionBlur(k=(5, 8), angle=(0, 25)),
+                        iaa.GammaContrast(gamma=(0.5, 1.75)),
+                        iaa.Add(value=(-10, 40)),
+                        iaa.AdditivePoissonNoise(lam=(5, 10)),
+                        iaa.CoarseDropout(p=0.05, size_percent=0.02)
+                    ]))
+                ], random_order=True)
+            
+            seq_det = aug_seq.to_deterministic()
+
+            boxes = entry['boxes'].copy()
+            ia_boxes = ia.BoundingBoxesOnImage.from_xyxy_array(boxes, shape=(entry['height'], entry['width'], 3))
+            ia_boxes_aug = seq_det.augment_bounding_boxes([ia_boxes])[0]
+            boxes = ia_boxes_aug.to_xyxy_array()
+            augmented_entry = {}
+            dont_copy = ('boxes', 'augmented')
+            for k, v in entry.items():
+                if k not in dont_copy:
+                    augmented_entry[k] = v
+            augmented_entry['boxes'] = boxes
+            augmented_entry['augmented'] = (True, seq_det)
+            augmented_roidb.append(augmented_entry)
+
+    roidb.extend(augmented_roidb)
+# TT: end
 
 def filter_for_training(roidb):
     """Remove roidb entries that have no usable RoIs based on config settings.

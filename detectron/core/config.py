@@ -118,7 +118,14 @@ __C.TRAIN.BG_THRESH_HI = 0.5
 __C.TRAIN.BG_THRESH_LO = 0.0
 
 # Use horizontally-flipped images during training?
-__C.TRAIN.USE_FLIPPED = True
+__C.TRAIN.USE_FLIPPED = False
+
+# TT: Augmentation
+# Use augmented images during training?
+__C.TRAIN.USE_TRANSFORMATION = True
+
+__C.TRAIN.TRANSFORM_SAMPLES = 5 # 5 transformations
+# TT: end
 
 # Overlap required between an RoI and a ground-truth box in order for that
 # (RoI, gt box) pair to be used as a bounding-box regression training example
@@ -1172,6 +1179,7 @@ def merge_cfg_from_list(cfg_list):
             continue
         if _key_is_renamed(full_key):
             _raise_key_rename_error(full_key)
+        full_key = full_key.strip('-')
         key_list = full_key.split('.')
         d = __C
         for subkey in key_list[:-1]:
