@@ -93,11 +93,6 @@ def _get_image_blob(roidb):
     """Builds an input blob from the images in the roidb at the specified
     scales.
     """
-    # # TT: Test Augmentation
-    # cells = []
-    # num_printed = 0
-    # # TT: end
-
     num_images = len(roidb)
     # Sample random scales to use for each image in this batch
     scale_inds = np.random.randint(
@@ -113,20 +108,9 @@ def _get_image_blob(roidb):
             im = im[:, ::-1, :]
         # TT: Augmentation
         if roidb[i]['augmented'][0]:
-            # # test
-            # if num_printed < 10:
-            #     cells.append(im)
-            # # end
             seq_det = roidb[i]['augmented'][1]
             assert seq_det is not None, 'Error: Transformation matrix is None!'
             im = seq_det.augment_image(im)
-            # # test
-            # if num_printed < 10:
-            #     bboxes_aug = ia.BoundingBoxesOnImage.from_xyxy_array(roidb[i]['boxes'], shape=im.shape)
-            #     cells.append(im)
-            #     cells.append(bboxes_aug.draw_on_image(im, thickness=2))
-            #     num_printed = num_printed + 1
-            # # end
         # TT: end
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]
         im, im_scale = blob_utils.prep_im_for_blob(
@@ -134,14 +118,6 @@ def _get_image_blob(roidb):
         )
         im_scales.append(im_scale)
         processed_ims.append(im)
-
-    # # TT: Test Augmentation
-    # if len(cells) > 0:
-    #     grid_image = ia.draw_grid(cells, cols=3)
-    #     from random import randint; import sys
-    #     salt = randint(0, 9223372036854775806)
-    #     cv2.imwrite("/home/tiwang/tmp/samples_of_augmentations_{}.jpg".format(salt), grid_image)
-    # # TT: end
 
     # Create a blob to hold the input images
     blob = blob_utils.im_list_to_blob(processed_ims)
