@@ -131,6 +131,8 @@ def extend_with_augmented_entries(roidb, dataset, aug_samples=1):
                     iaa.Sequential([
                         iaa.Fliplr(0.1), # horizontally flip 50% of the images
                         iaa.Flipud(0.1),
+                        iaa.Affine(scale=(0.7, 0.9),
+                                   rotate=(-90, 90)),
                         iaa.PerspectiveTransform(scale=(0.01, 0.1)),
                     ])
                     ,
