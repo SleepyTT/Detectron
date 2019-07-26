@@ -94,7 +94,9 @@ def run_inference(
             # launch subprocesses that each run inference on a range of the dataset
             all_results = {}
             dataset_info, proposal_file = get_inference_dataset()
-            output_dir = get_output_dir(dataset_info, training=False)
+            output_dir = osp.join(get_output_dir(dataset_info, training=False), weights_file.strip().split('/')[-1].split('.')[0])
+            if not osp.exists(output_dir):
+                os.makedirs(output_dir)
             results = parent_func(
                 weights_file,
                 dataset_info,
@@ -110,7 +112,9 @@ def run_inference(
             # In this case test_net was called via subprocess.Popen to execute on a
             # range of inputs on a single dataset
             dataset_info, proposal_file = get_inference_dataset(is_parent=False)
-            output_dir = get_output_dir(dataset_info, training=False)
+            output_dir = osp.join(get_output_dir(dataset_info, training=False), weights_file.strip().split('/')[-1].split('.')[0])
+            if not osp.exists(output_dir):
+                os.makedirs(output_dir)
             return child_func(
                 weights_file,
                 dataset_info,
@@ -264,7 +268,7 @@ def test_net(
         if cls_keyps_i is not None:
             extend_results(i, all_keyps, cls_keyps_i)
 
-        if i % 10 == 0:  # Reduce log file size
+        if i % 100 == 0:  # Reduce log file size
             ave_total_time = np.sum([t.average_time for t in timers.values()])
             eta_seconds = ave_total_time * (num_images - i - 1)
             eta = str(datetime.timedelta(seconds=int(eta_seconds)))
@@ -287,6 +291,12 @@ def test_net(
                     start_ind + num_images, det_time, misc_time, eta
                 )
             )
+
+            from azureml.core import Run
+            run = Run.get_context()
+            run.log(name='ave_total_time', value=np.float(ave_total_time))
+            run.log(name='det_time', value=np.float(det_time))
+            run.log(name='misc_time', value=np.float(misc_time))
 
         if cfg.VIS:
             im_name = os.path.splitext(os.path.basename(entry['image']))[0]

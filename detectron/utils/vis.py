@@ -310,7 +310,7 @@ def vis_one_image(
             if class_list is not None:
                 class_str = class_list[classes[i]]
             else:
-                class_str = get_class_string(classes[i], score, dataset),
+                class_str = get_class_string(classes[i], score, dataset)
             ax.text(
                 bbox[0], bbox[1] - 2,
                 "{}: {:.3f}".format(class_str, score), 

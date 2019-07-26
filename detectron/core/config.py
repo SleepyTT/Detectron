@@ -118,11 +118,11 @@ __C.TRAIN.BG_THRESH_HI = 0.5
 __C.TRAIN.BG_THRESH_LO = 0.0
 
 # Use horizontally-flipped images during training?
-__C.TRAIN.USE_FLIPPED = False
+__C.TRAIN.USE_FLIPPED = True
 
 # TT: Augmentation
 # Use augmented images during training?
-__C.TRAIN.USE_TRANSFORMATION = True
+__C.TRAIN.USE_TRANSFORMATION = False
 
 __C.TRAIN.TRANSFORM_SAMPLES = 5 # 5 transformations
 # TT: end

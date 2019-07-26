@@ -22,6 +22,7 @@ from __future__ import unicode_literals
 
 import json
 import logging
+from detectron.utils.logging import log_pr_curve_for_aml
 import numpy as np
 import os
 import six
@@ -210,14 +211,50 @@ def _coco_bbox_results_one_category(json_dataset, boxes, cat_id):
 def _do_detection_eval(json_dataset, res_file, output_dir):
     coco_dt = json_dataset.COCO.loadRes(str(res_file))
     coco_eval = COCOeval(json_dataset.COCO, coco_dt, 'bbox')
+    print("==============Evaluating localization metrics=============")
+    # TT: Evaluate localization P/R
+    coco_eval.params.useCats = 0
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    coco_eval.summarize()
+    _log_pr_curve_for_aml(coco_eval, "Localization PR curve")
+
+    coco_eval = COCOeval(json_dataset.COCO, coco_dt, 'bbox')
+    print("==============Evaluating overall metrics=============")
+    coco_eval.params.useCats = 1
     coco_eval.evaluate()
     coco_eval.accumulate()
     _log_detection_eval_metrics(json_dataset, coco_eval)
+    _log_pr_curve_for_aml(coco_eval, "Final PR curve")
     eval_file = os.path.join(output_dir, 'detection_results.pkl')
     save_object(coco_eval, eval_file)
     logger.info('Wrote json eval results to: {}'.format(eval_file))
+
     return coco_eval
 
+def _log_pr_curve_for_aml(coco_eval, title):
+    def _get_thr_ind(coco_eval, thr):
+        ind = np.where((coco_eval.params.iouThrs > thr - 1e-5) &
+                       (coco_eval.params.iouThrs < thr + 1e-5))[0][0]
+        iou_thr = coco_eval.params.iouThrs[ind]
+        assert np.isclose(iou_thr, thr)
+        return ind
+
+    IoU_lo_thresh = 0.5
+    IoU_hi_thresh = 0.95
+    ind_lo = _get_thr_ind(coco_eval, IoU_lo_thresh)
+    ind_hi = _get_thr_ind(coco_eval, IoU_hi_thresh)
+    # TT: calculate the final pr curve
+    pr_curve = {'recall': [], 'precision': []}
+    
+    for rec_thr_id, rec_thr in enumerate(coco_eval.params.recThrs):
+        precision = coco_eval.eval['precision'][ind_lo, rec_thr_id, :, 0, 2]
+        pr_reci = np.mean(precision[precision > -1])
+        print("P: {} of R: {}".format(pr_reci, rec_thr))
+        pr_curve['recall'].append(rec_thr)
+        pr_curve['precision'].append(pr_reci)
+        
+    log_pr_curve_for_aml(title, pr_curve)
 
 def _log_detection_eval_metrics(json_dataset, coco_eval):
     def _get_thr_ind(coco_eval, thr):
@@ -240,6 +277,7 @@ def _log_detection_eval_metrics(json_dataset, coco_eval):
         '~~~~ Mean and per-category AP @ IoU=[{:.2f},{:.2f}] ~~~~'.format(
             IoU_lo_thresh, IoU_hi_thresh))
     logger.info('{:.1f}'.format(100 * ap_default))
+    
     for cls_ind, cls in enumerate(json_dataset.classes):
         if cls == '__background__':
             continue

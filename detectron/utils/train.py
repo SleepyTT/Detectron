@@ -80,7 +80,7 @@ def train_model():
                 output_dir, 'model_iter{}.pkl'.format(cur_iter)
             )
             nu.save_model_to_weights_file(checkpoints[cur_iter], model)
-        if cur_iter % TEST_PERIOD == 0 and cur_iter > start_iter:
+        if (cur_iter + 1) % TEST_PERIOD == 0 and cur_iter > start_iter:
             print("================RUN INFERENCE==================")
             checkpoints[cur_iter] = os.path.join(
                 output_dir, 'model_iter{}.pkl'.format(cur_iter)

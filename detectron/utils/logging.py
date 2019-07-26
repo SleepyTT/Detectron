@@ -42,44 +42,66 @@ def log_json_stats(stats, sort_keys=True):
 
 def log_for_aml(stats):
     # may need to use AML.Run
-    print('PROGRESS: {}%'.format(100.0 * stats['iter'] / cfg.SOLVER.MAX_ITER))
-    print('EVALERR: {}'.format(stats['loss']))
+    print('PROGRESS: {:.6f}%'.format(100.0 * stats['iter'] / cfg.SOLVER.MAX_ITER))
+    print('EVALERR: {:.6f}'.format(stats['loss']))
     
-    run = Run.get_context()
-    run.log('evaluate_error', np.float(stats['loss']))
+    try:
+        run = Run.get_context()
+        run.log(name='progress', value=np.float(100.0 * stats['iter'] / cfg.SOLVER.MAX_ITER))
+        run.log(name='evaluate_error', value=np.float(stats['loss']))
+        run.log(name='lr', value=np.float(stats['lr']))
+    except:
+        print('Currently cannot get the run_context for AML...Will try it later...')
 
+def log_pr_curve_for_aml(title, precision, recall):
+    try:
+        run = Run.get_context()
+        run.log_row(name=title, recall=rec_thr, precision=pre_reci)
+    except:
+        print('Currently cannot get the run_context for pr curve...Will try it later...')
+
+def log_pr_curve_for_aml(title, pr_curve):
+    try:
+        run = Run.get_context()
+        run.log_table(name=title, value=pr_curve)
+    except:
+        print('Currently cannot get the run_context for pr curve...Will try it later...')
+        
 def log_test_results_for_aml(dataset, all_results):
-    run = Run.get_context()
+    try:
+        run = Run.get_context()
 
-    #metric types
-    AP = 0
-    AP50 = 1
-    AP75 = 2
-    PRECISION = 3
-    RECALL = 4
-    metrics = ['AP', 'AP50', 'AP75', 'PRECISION', 'RECALL']
+        #metric types
+        AP = 0
+        AP50 = 1
+        AP75 = 2
+        PRECISION = 3
+        RECALL = 4
+        metrics = ['AP', 'AP50', 'AP75', 'PRECISION', 'RECALL']
 
-    results = all_results[dataset.name]    
+        results = all_results[dataset.name]    
     
-    # box
-    task = 'box'
-    run.log(name=metrics[AP], value=np.float(results[task][metrics[AP]]))
-    run.log(name=metrics[AP50], value=np.float(results[task][metrics[AP50]]))
-    run.log(name=metrics[AP75], value=np.float(results[task][metrics[AP75]]))
-    
-    # mask
-    if cfg.MODEL.MASK_ON:
-        task = 'mask'
-        run.log(metrics[AP], np.float(results[task][metrics[AP]]))
-        run.log(metrics[AP50], np.float(results[task][metrics[AP50]]))
-        run.log(metrics[AP75], np.float(results[task][metrics[AP75]]))
+        # box
+        task = 'box'
+        run.log(name=metrics[AP], value=np.float(results[task][metrics[AP]]))
+        run.log(name=metrics[AP50], value=np.float(results[task][metrics[AP50]]))
+        run.log(name=metrics[AP75], value=np.float(results[task][metrics[AP75]]))
+        
+        # mask
+        if cfg.MODEL.MASK_ON:
+            task = 'mask'
+            run.log(metrics[AP], np.float(results[task][metrics[AP]]))
+            run.log(metrics[AP50], np.float(results[task][metrics[AP50]]))
+            run.log(metrics[AP75], np.float(results[task][metrics[AP75]]))
 
-    if cfg.MODEL.KEYPOINTS_ON:
-        task = 'keypoint'
-        run.log(metrics[AP], np.float(results[task][metrics[AP]]))
-        run.log(metrics[AP50], np.float(results[task][metrics[AP50]]))
-        run.log(metrics[AP75], np.float(results[task][metrics[AP75]]))
+        if cfg.MODEL.KEYPOINTS_ON:
+            task = 'keypoint'
+            run.log(metrics[AP], np.float(results[task][metrics[AP]]))
+            run.log(metrics[AP50], np.float(results[task][metrics[AP50]]))
+            run.log(metrics[AP75], np.float(results[task][metrics[AP75]]))
 
+    except:
+        print('Currently cannot get the run_context for AML...Will try it later...')
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
