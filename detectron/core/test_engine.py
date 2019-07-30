@@ -26,6 +26,7 @@ import datetime
 import logging
 import numpy as np
 import os
+import os.path as osp
 
 from caffe2.python import workspace
 
