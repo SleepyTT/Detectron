@@ -31,6 +31,8 @@ import sys
 
 from azureml.core import Run
 
+run = Run.get_context()
+
 
 def log_json_stats(stats, sort_keys=True):
     # hack to control precision of top-level floats
@@ -46,31 +48,26 @@ def log_for_aml(stats):
     print('EVALERR: {:.6f}'.format(stats['loss']))
     
     try:
-        run = Run.get_context()
         run.log(name='progress', value=np.float(100.0 * stats['iter'] / cfg.SOLVER.MAX_ITER))
         run.log(name='evaluate_error', value=np.float(stats['loss']))
         run.log(name='lr', value=np.float(stats['lr']))
-    except:
-        print('Currently cannot get the run_context for AML...Will try it later...')
+    except Exception as ex:
+        print('Currently cannot log to AML...Will try it later... {}'.format(ex))
 
 def log_pr_curve_for_aml(title, precision, recall):
     try:
-        run = Run.get_context()
         run.log_row(name=title, recall=rec_thr, precision=pre_reci)
-    except:
-        print('Currently cannot get the run_context for pr curve...Will try it later...')
+    except Exception as ex:
+        print('Currently cannot log to AML...Will try it later... {}'.format(ex))
 
 def log_pr_curve_for_aml(title, pr_curve):
     try:
-        run = Run.get_context()
         run.log_table(name=title, value=pr_curve)
-    except:
-        print('Currently cannot get the run_context for pr curve...Will try it later...')
+    except Exception as ex:
+        print('Currently cannot log to AML...Will try it later... {}'.format(ex))
         
 def log_test_results_for_aml(dataset, all_results):
     try:
-        run = Run.get_context()
-
         #metric types
         AP = 0
         AP50 = 1
@@ -100,8 +97,8 @@ def log_test_results_for_aml(dataset, all_results):
             run.log(metrics[AP50], np.float(results[task][metrics[AP50]]))
             run.log(metrics[AP75], np.float(results[task][metrics[AP75]]))
 
-    except:
-        print('Currently cannot get the run_context for AML...Will try it later...')
+    except Exception as ex:
+        print('Currently cannot log to AML...Will try it later... {}'.format(ex))
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
